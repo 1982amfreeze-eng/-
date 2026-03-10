@@ -5,9 +5,11 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>演讲比赛抽签</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root { --c1:#1d4ed8; --c2:#2563eb; --bg:#f8fafc; }
-    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, PingFang SC, Noto Sans SC, Arial, "Helvetica Neue", Helvetica, "Microsoft YaHei", sans-serif; background:#f5f6fa; color:#111827;}
+    body { margin:0; font-family: 'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, PingFang SC, Arial, "Helvetica Neue", Helvetica, "Microsoft YaHei", sans-serif; background:#f5f6fa; color:#111827;}
     .container { max-width: 1040px; margin: 24px auto; padding: 0 16px;}
     .card { background:#fff; border-radius: 16px; box-shadow: 0 10px 30px rgba(2,6,23,.06); padding:24px;}
     .title { font-weight: 800; font-size: 22px; margin: 0 0 12px 0;}
@@ -109,36 +111,20 @@
     </div>
   </div>
 
-  <!-- Firebase（按需更新到当下最新 10.x 版本） -->
+  <!-- Firebase（固定使用 v10.x 模块，避免版本混用） -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getFirestore, doc, setDoc, getDoc, updateDoc, runTransaction, serverTimestamp, collection } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, getDoc, getDocs, runTransaction, serverTimestamp, collection } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    // 1) 替换为你的 Firebase Web 配置（控制台 -> 项目概览 -> 添加应用 -> Web）
+    // === 请将下面配置替换为你自己的 firebaseConfig（已先填入你提供的项目配置，若不一致请改） ===
     const firebaseConfig = {
-      <script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
-
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const firebaseConfig = {
-    apiKey: "AIzaSyDOkX7bLHSQZGMbrwK3AROiOHD1MxpX4Gg",
-    authDomain: "online-sequencing-tool.firebaseapp.com",
-    projectId: "online-sequencing-tool",
-    storageBucket: "online-sequencing-tool.firebasestorage.app",
-    messagingSenderId: "65091434205",
-    appId: "1:65091434205:web:7ddd00d8149fa391660d34",
-    measurementId: "G-2BDCDWK7SZ"
-  };
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-</script>
+      apiKey: "AIzaSyDOkX7bLHSQZGMbrwK3AROiOHD1MxpX4Gg",
+      authDomain: "online-sequencing-tool.firebaseapp.com",
+      projectId: "online-sequencing-tool",
+      storageBucket: "online-sequencing-tool.firebasestorage.app",
+      messagingSenderId: "65091434205",
+      appId: "1:65091434205:web:7ddd00d8149fa391660d34",
+      measurementId: "G-2BDCDWK7SZ"
     };
 
     const app = initializeApp(firebaseConfig);
@@ -150,7 +136,6 @@
     const sid = qs.get("s");
     const adminParam = qs.get("admin") || null;
 
-    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
     const randId = (len=6) => {
       const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
       return Array.from({length:len},()=>chars[Math.floor(Math.random()*chars.length)]).join("");
@@ -158,7 +143,7 @@
     const safePid = (name) => {
       // 将姓名转为 UTF-8 base64，作为文档 ID（去掉不安全字符）
       const b64 = btoa(unescape(encodeURIComponent(name)));
-      return b64.replace(/=+$/,"").replace(/[+/]/g, m => m === '+' ? '-' : '_');
+      return b64.replace(/=+$/,"" ).replace(/[+/]/g, m => m === '+' ? '-' : '_');
     };
 
     // UI 切换
@@ -171,7 +156,7 @@
     $("clearBtn").onclick = () => { $("names").value = ""; };
     $("createBtn").onclick = async () => {
       const title = $("title").value.trim() || "演讲比赛抽签";
-      const names = $("names").value.split(/\\r?\\n/).map(s => s.trim()).filter(Boolean);
+      const names = $("names").value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
       if (names.length === 0) { alert("请先粘贴 25 人名单（每行一个）"); return; }
       const sessionId = randId(6);
       const adminKey = randId(10);
@@ -224,12 +209,10 @@
         $("thAdmin").classList.remove("hidden");
       }
 
-      // 初始载入 + 定时刷新（简单轮询，避免为演示引入 onSnapshot）
       async function refresh() {
         const pCol = collection(db, "sessions", sid, "participants");
-        const pList = await (await getDoc(sessionRef)).exists() ? await (await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js")).getDocs(pCol) : null;
-        const docs = pList ? pList.docs : [];
-        const participants = docs.map(d => ({ id:d.id, ...d.data() }));
+        const pList = await getDocs(pCol);
+        const participants = pList.docs.map(d => ({ id:d.id, ...d.data() }));
 
         // 待抽签下拉
         const waiting = participants.filter(p => p.number === null).sort((a,b)=>a.name.localeCompare(b.name));
@@ -257,8 +240,9 @@
         const drawed = participants.filter(p => p.number !== null).sort((a,b)=>a.number-b.number);
         drawed.forEach(p => {
           const tr = document.createElement("tr");
-          tr.innerHTML = `<td><span class="badge">${p.number}</span></td><td>${p.name}</td><td>${p.drawnAt ? new Date(p.drawnAt.seconds*1000).toLocaleString() : ""}</td><td class="${isAdmin?'':'hidden'}"><button class="btn btn-gray" data-reset="${p.id}">撤销</button></td>`;
-          if (isAdmin) tr.querySelector(\"button\").onclick = () => resetOne(p.id);
+          const ts = p.drawnAt && p.drawnAt.toDate ? p.drawnAt.toDate() : null;
+          tr.innerHTML = `<td><span class="badge">${p.number}</span></td><td>${p.name}</td><td>${ts ? ts.toLocaleString() : ""}</td><td class="${isAdmin?'':'hidden'}"><button class="btn btn-gray" data-reset="${p.id}">撤销</button></td>`;
+          if (isAdmin) tr.querySelector("button").onclick = () => resetOne(p.id);
           resultBody.appendChild(tr);
         });
 
