@@ -3,13 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>演讲比赛抽签</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <title>演讲比赛抽签（DEBUG 版）</title>
   <style>
     :root { --c1:#1d4ed8; --c2:#2563eb; --bg:#f8fafc; }
-    body { margin:0; font-family: 'Noto Sans SC', system-ui, -apple-system, Segoe UI, Roboto, PingFang SC, Arial, "Helvetica Neue", Helvetica, "Microsoft YaHei", sans-serif; background:#f5f6fa; color:#111827;}
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, PingFang SC, Noto Sans SC, Arial, "Helvetica Neue", Helvetica, "Microsoft YaHei", sans-serif; background:#f5f6fa; color:#111827;}
     .container { max-width: 1040px; margin: 24px auto; padding: 0 16px;}
     .card { background:#fff; border-radius: 16px; box-shadow: 0 10px 30px rgba(2,6,23,.06); padding:24px;}
     .title { font-weight: 800; font-size: 22px; margin: 0 0 12px 0;}
@@ -27,28 +24,28 @@
     .badge { display:inline-flex; align-items:center; justify-content:center; width:40px; height:40px; border-radius:999px; background:var(--c1); color:#fff; font-weight:800;}
     table { width:100%; border-collapse: collapse; }
     th, td { padding:10px 8px; border-bottom:1px solid #f1f5f9; text-align:left; font-size:14px;}
-    .progress { width:100%; height:10px; background:#f1f5f9; border-radius:999px; overflow:hidden;}
-    .progress>div { height:100%; background:#10b981; }
-    .hidden { display:none; }
-    @media (max-width: 860px) { .grid-2{ grid-template-columns: 1fr; } }
+
+    /* Debug 面板 */
+    #debug { position: fixed; bottom: 0; left: 0; right: 0; max-height: 40vh; overflow: auto; background: #0b1221; color: #d1d5db; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; border-top: 1px solid #111827; }
+    #debug .head { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; background:#111827; color:#93c5fd; font-weight:700; }
+    #debug pre { margin:0; padding:8px 12px; white-space:pre-wrap; }
+    #debug .ok { color:#34d399; }
+    #debug .err { color:#f87171; }
+    #debug .warn { color:#fbbf24; }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="grid grid-2">
-      <!-- 主持人/创建卡片（无 s 参数时显示） -->
       <div id="setup-card" class="card">
-        <h1 class="title">演讲比赛抽签（主持人）</h1>
-        <p class="muted">粘贴 25 人名单（每行一个名字），点击「创建会话」，再把链接发给所有选手。</p>
+        <h1 class="title">演讲比赛抽签（主持人｜DEBUG）</h1>
+        <p class="muted">粘贴 25 人名单（每行一个名字），点击“创建会话”。下面的 Debug 面板会实时打印每一步。</p>
         <div style="height:8px"></div>
         <label>活动标题（可选）</label>
         <input id="title" class="input" placeholder="演讲比赛抽签" />
         <div style="height:12px"></div>
         <label>参赛名单（每行一个）</label>
-        <textarea id="names" rows="10" class="input" placeholder="张三
-李四
-王五
-..."></textarea>
+        <textarea id="names" rows="10" class="input" placeholder="张三\n李四\n王五\n..."></textarea>
         <div style="height:12px"></div>
         <div class="row">
           <button id="createBtn" class="btn">创建会话</button>
@@ -68,11 +65,8 @@
             <button id="copyAdmin" class="btn btn-gray">复制</button>
           </div>
         </div>
-        <div style="height:16px"></div>
-        <div class="muted">提示：名单中的姓名请保持唯一（如有重名可加“（学院/班级）”）。</div>
       </div>
 
-      <!-- 抽签/结果卡片（有 s 参数时显示） -->
       <div id="draw-card" class="card hidden">
         <div class="row" style="justify-content:space-between">
           <div>
@@ -81,242 +75,165 @@
           </div>
           <div class="pill"><span id="remain">剩余 25</span></div>
         </div>
-
         <div style="height:12px"></div>
-        <div class="progress"><div id="bar" style="width:0%"></div></div>
-
-        <div style="height:16px"></div>
         <div class="row">
           <select id="nameSelect" class="select"></select>
           <button id="drawBtn" class="btn">抽取顺序</button>
         </div>
-
         <div style="height:16px"></div>
-        <div class="grid grid-2">
-          <div>
-            <h3 class="title" style="font-size:18px">待抽签</h3>
-            <div id="waiting" class="list"></div>
-          </div>
-          <div>
-            <h3 class="title" style="font-size:18px">抽签结果</h3>
-            <table id="result">
-              <thead><tr><th>顺序</th><th>姓名</th><th>时间</th><th id="thAdmin" class="hidden">操作</th></tr></thead>
-              <tbody></tbody>
-            </table>
-          </div>
+        <div>
+          <h3 class="title" style="font-size:18px">抽签结果（实时）</h3>
+          <table id="result">
+            <thead><tr><th>顺序</th><th>姓名</th><th>时间</th></tr></thead>
+            <tbody></tbody>
+          </table>
         </div>
-
-        <div id="adminHint" class="muted hidden" style="margin-top:12px">已进入主持人管理模式，可对个别结果进行撤销。</div>
       </div>
     </div>
   </div>
 
-  <!-- Firebase（固定使用 v10.x 模块，避免版本混用） -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getFirestore, doc, setDoc, getDoc, getDocs, runTransaction, serverTimestamp, collection } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  <div id="debug">
+    <div class="head">DEBUG 面板 <span id="env"></span></div>
+    <pre id="log"></pre>
+  </div>
 
-    // === 请将下面配置替换为你自己的 firebaseConfig（已先填入你提供的项目配置，若不一致请改） ===
-    const firebaseConfig = {
-      apiKey: "AIzaSyDOkX7bLHSQZGMbrwK3AROiOHD1MxpX4Gg",
-      authDomain: "online-sequencing-tool.firebaseapp.com",
-      projectId: "online-sequencing-tool",
-      storageBucket: "online-sequencing-tool.firebasestorage.app",
-      messagingSenderId: "65091434205",
-      appId: "1:65091434205:web:7ddd00d8149fa391660d34",
-      measurementId: "G-2BDCDWK7SZ"
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import { getFirestore, doc, setDoc, getDoc, getDocs, onSnapshot, runTransaction, serverTimestamp, collection } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+    const L = (msg, cls='') => {
+      const el = document.getElementById('log');
+      const line = document.createElement('div');
+      if (cls) line.className = cls;
+      line.textContent = msg; el.appendChild(line);
+      el.scrollTop = el.scrollHeight;
+      console.log('[DBG]', msg);
     };
 
+    window.addEventListener('error', e => L('window.onerror: '+ (e.message||e), 'err'));
+    window.addEventListener('unhandledrejection', e => L('unhandledrejection: '+ (e.reason?.message||e.reason||e), 'err'));
+
+    const firebaseConfig = {
+      apiKey: 'AIzaSyDOkX7bLHSQZGMbrwK3AROiOHD1MxpX4Gg',
+      authDomain: 'online-sequencing-tool.firebaseapp.com',
+      projectId: 'online-sequencing-tool',
+      storageBucket: 'online-sequencing-tool.firebasestorage.app',
+      messagingSenderId: '65091434205',
+      appId: '1:65091434205:web:7ddd00d8149fa391660d34',
+      measurementId: 'G-2BDCDWK7SZ'
+    };
+
+    L('init firebase...');
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    L('firebase ready', 'ok');
 
-    // 工具函数
-    const $ = (id) => document.getElementById(id);
+    const $ = id => document.getElementById(id);
     const qs = new URLSearchParams(location.search);
-    const sid = qs.get("s");
-    const adminParam = qs.get("admin") || null;
+    const sid = qs.get('s');
+    const adminParam = qs.get('admin') || null;
+    $('env').textContent = `mode=${sid? 'DRAW':'HOST'}, origin=${location.origin}, path=${location.pathname}`;
 
-    const randId = (len=6) => {
-      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-      return Array.from({length:len},()=>chars[Math.floor(Math.random()*chars.length)]).join("");
-    };
+    const rand = (len)=>{ const s='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; return Array.from({length:len},()=>s[Math.floor(Math.random()*s.length)]).join(''); };
     const safePid = (name) => {
-      // 将姓名转为 UTF-8 base64，作为文档 ID（去掉不安全字符）
       const b64 = btoa(unescape(encodeURIComponent(name)));
-      return b64.replace(/=+$/,"" ).replace(/[+/]/g, m => m === '+' ? '-' : '_');
+      return b64.replace(/=+$/,'').replace(/[+/]/g,m=>m==='+'?'-':'_');
     };
 
     // UI 切换
-    const setupCard = $("setup-card");
-    const drawCard = $("draw-card");
-    if (sid) { setupCard.classList.add("hidden"); drawCard.classList.remove("hidden"); }
-    else { setupCard.classList.remove("hidden"); drawCard.classList.add("hidden"); }
+    const setupCard = $('setup-card');
+    const drawCard  = $('draw-card');
+    if (sid) { setupCard.classList.add('hidden'); drawCard.classList.remove('hidden'); }
+    else { setupCard.classList.remove('hidden'); drawCard.classList.add('hidden'); }
 
-    // 主持人：创建会话
-    $("clearBtn").onclick = () => { $("names").value = ""; };
-    $("createBtn").onclick = async () => {
-      const title = $("title").value.trim() || "演讲比赛抽签";
-      const names = $("names").value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
-      if (names.length === 0) { alert("请先粘贴 25 人名单（每行一个）"); return; }
-      const sessionId = randId(6);
-      const adminKey = randId(10);
+    $('clearBtn').onclick = ()=>{ $('names').value=''; L('清空文本框', 'warn'); };
 
-      // 写入会话基础信息
-      const sessionRef = doc(db, "sessions", sessionId);
-      await setDoc(sessionRef, {
-        title, size: names.length, createdAt: serverTimestamp(), adminKey
-      });
+    // 创建会话（带步骤日志）
+    $('createBtn').onclick = async ()=>{
+      try {
+        const raw = $('names').value || '';
+        const names = raw.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+        L(`点击创建：${names.length} 行`);
+        if (names.length===0) { alert('请先粘贴 25 人名单（每行一个）'); return; }
+        const title = ($('title').value||'演讲比赛抽签').trim();
+        const sessionId = rand(6); const adminKey = rand(10);
+        L(`准备写入会话 ${sessionId} ...`);
+        await setDoc(doc(db,'sessions',sessionId), { title, size: names.length, createdAt: serverTimestamp(), adminKey });
+        L('已写入会话', 'ok');
+        for (const n of names) {
+          await setDoc(doc(db,'sessions',sessionId,'participants', safePid(n)), { name:n, number:null, drawnAt:null });
+        }
+        L('已写入 participants', 'ok');
+        for (let i=1;i<=names.length;i++) {
+          await setDoc(doc(db,'sessions',sessionId,'numbers', String(i)), { assigned:false, assignedTo:null, assignedAt:null });
+        }
+        L('已写入 numbers', 'ok');
 
-      // 写入参赛者与号码池
-      for (const n of names) {
-        await setDoc(doc(db, "sessions", sessionId, "participants", safePid(n)), {
-          name: n, number: null, drawnAt: null
-        });
+        const share = `${location.origin}${location.pathname}?s=${sessionId}`;
+        const admin = `${location.origin}${location.pathname}?s=${sessionId}&admin=${adminKey}`;
+        $('setup-links').classList.remove('hidden');
+        $('shareLink').value = share; $('adminLink').value = admin;
+        L(`✅ 创建成功 share=${share}`,'ok');
+      } catch (e) {
+        L('创建失败：'+(e.message||e), 'err');
+        alert('创建失败：'+(e.message||e));
       }
-      for (let i=1; i<=names.length; i++) {
-        await setDoc(doc(db, "sessions", sessionId, "numbers", String(i)), {
-          assigned: false, assignedTo: null, assignedAt: null
-        });
-      }
-
-      const share = `${location.origin}${location.pathname}?s=${sessionId}`;
-      const admin = `${location.origin}${location.pathname}?s=${sessionId}&admin=${adminKey}`;
-      $("setup-links").classList.remove("hidden");
-      $("shareLink").value = share;
-      $("adminLink").value = admin;
-      $("copyShare").onclick = () => navigator.clipboard.writeText(share);
-      $("copyAdmin").onclick = () => navigator.clipboard.writeText(admin);
-
-      alert("会话已创建成功！复制链接并发送给所有选手。");
     };
 
-    // 抽签视图（有 s 参数）
+    // 抽签视图：改成实时 onSnapshot（不再轮询）
     if (sid) {
-      const sessionRef = doc(db, "sessions", sid);
+      L(`进入抽签模式，会话 ${sid}`);
+      const sessionRef = doc(db, 'sessions', sid);
       const sessSnap = await getDoc(sessionRef);
       if (!sessSnap.exists()) {
-        alert("会话不存在或已删除"); location.href = location.pathname; throw new Error("session not found");
-      }
+        L('会话不存在或已删除','err');
+      } else {
+        const session = sessSnap.data();
+        $('evtTitle').textContent = session.title || '演讲比赛抽签';
+        $('sid').textContent = sid;
+        const isAdmin = !!adminParam && adminParam === (session.adminKey||'');
 
-      const session = sessSnap.data();
-      $("evtTitle").textContent = session.title || "演讲比赛抽签";
-      $("sid").textContent = sid;
+        const pCol = collection(db,'sessions',sid,'participants');
+        onSnapshot(pCol, (snap)=>{
+          const participants = snap.docs.map(d=>({id:d.id, ...d.data()}));
+          const waiting = participants.filter(p=>p.number===null).sort((a,b)=>a.name.localeCompare(b.name));
+          const drawed  = participants.filter(p=>p.number!==null).sort((a,b)=>a.number-b.number);
 
-      // 检查是否主持人模式
-      const isAdmin = !!adminParam && adminParam === (session.adminKey || "");
-      if (isAdmin) {
-        $("adminHint").classList.remove("hidden");
-        $("thAdmin").classList.remove("hidden");
-      }
-
-      async function refresh() {
-        const pCol = collection(db, "sessions", sid, "participants");
-        const pList = await getDocs(pCol);
-        const participants = pList.docs.map(d => ({ id:d.id, ...d.data() }));
-
-        // 待抽签下拉
-        const waiting = participants.filter(p => p.number === null).sort((a,b)=>a.name.localeCompare(b.name));
-        const select = $("nameSelect"); select.innerHTML = "";
-        waiting.forEach(p => {
-          const opt = document.createElement("option");
-          opt.value = p.id; opt.textContent = p.name;
-          select.appendChild(opt);
-        });
-        if (waiting.length === 0) {
-          const opt = document.createElement("option"); opt.textContent = "（已全部抽完）"; select.appendChild(opt);
-        }
-
-        // 左侧“待抽签”列表
-        const waitingDiv = $("waiting"); waitingDiv.innerHTML = "";
-        waiting.forEach(p => {
-          const row = document.createElement("div"); row.className = "row"; row.style.justifyContent="space-between";
-          row.innerHTML = `<div>${p.name}</div><button class="btn btn-gray" data-pid="${p.id}">代抽</button>`;
-          row.querySelector("button").onclick = () => drawFor(p.id);
-          waitingDiv.appendChild(row);
+          // 待抽签下拉&列表
+          const sel=$('nameSelect'); sel.innerHTML='';
+          waiting.forEach(p=>{ const o=document.createElement('option'); o.value=p.id; o.textContent=p.name; sel.appendChild(o); });
+          const tbody=$('result').querySelector('tbody'); tbody.innerHTML='';
+          drawed.forEach(p=>{ const tr=document.createElement('tr'); const ts=p.drawnAt?.toDate?p.drawnAt.toDate():null; tr.innerHTML=`<td><span class="badge">${p.number}</span></td><td>${p.name}</td><td>${ts?ts.toLocaleString():''}</td>`; tbody.appendChild(tr); });
+          $('remain').textContent = `剩余 ${waiting.length}`;
         });
 
-        // 右侧“结果表”
-        const resultBody = $("result").querySelector("tbody"); resultBody.innerHTML = "";
-        const drawed = participants.filter(p => p.number !== null).sort((a,b)=>a.number-b.number);
-        drawed.forEach(p => {
-          const tr = document.createElement("tr");
-          const ts = p.drawnAt && p.drawnAt.toDate ? p.drawnAt.toDate() : null;
-          tr.innerHTML = `<td><span class="badge">${p.number}</span></td><td>${p.name}</td><td>${ts ? ts.toLocaleString() : ""}</td><td class="${isAdmin?'':'hidden'}"><button class="btn btn-gray" data-reset="${p.id}">撤销</button></td>`;
-          if (isAdmin) tr.querySelector("button").onclick = () => resetOne(p.id);
-          resultBody.appendChild(tr);
-        });
-
-        // 进度
-        const total = participants.length, done = drawed.length;
-        $("remain").textContent = `剩余 ${total - done}`;
-        $("bar").style.width = `${(done/total)*100}%`;
+        $('drawBtn').onclick = async ()=>{
+          const pid = $('nameSelect').value; if (!pid) { alert('请选择你的名字'); return; }
+          try {
+            await runTransaction(db, async (tx) => {
+              const pRef = doc(db,'sessions',sid,'participants',pid);
+              const pSnap = await tx.get(pRef);
+              if (!pSnap.exists()) throw new Error('选手不存在');
+              if (pSnap.data().number!==null) throw new Error('该选手已抽取过');
+              const size = session.size || 25;
+              // 简单随机，最多尝试 50 次
+              let pick=null;
+              for (let i=0;i<50;i++){
+                const n = 1 + Math.floor(Math.random()*size);
+                const nRef = doc(db,'sessions',sid,'numbers',String(n));
+                const nSnap = await tx.get(nRef);
+                if (nSnap.data()?.assigned) continue;
+                pick={n,nRef}; break;
+              }
+              if (!pick) throw new Error('号码已抽完');
+              tx.update(pRef,{number:pick.n, drawnAt:serverTimestamp()});
+              tx.update(pick.nRef,{assigned:true, assignedTo:pid, assignedAt:serverTimestamp()});
+            });
+            L('抽取成功','ok');
+          } catch (e) { L('抽取失败：'+(e.message||e),'err'); alert(e.message||e); }
+        };
       }
-
-      // 抽签（事务，防并发冲突）
-      async function drawFor(pid) {
-        try {
-          await runTransaction(db, async (tx) => {
-            const pRef = doc(db, "sessions", sid, "participants", pid);
-            const pSnap = await tx.get(pRef);
-            if (!pSnap.exists()) throw new Error("选手不存在");
-            if (pSnap.data().number !== null) throw new Error("该选手已抽取过");
-
-            const size = session.size || 25;
-            // 尝试最多 50 次随机号码
-            let pick = null;
-            for (let i=0;i<50;i++) {
-              const n = 1 + Math.floor(Math.random()*size);
-              const nRef = doc(db, "sessions", sid, "numbers", String(n));
-              const nSnap = await tx.get(nRef);
-              if (!nSnap.exists()) throw new Error("号码池异常");
-              if (nSnap.data().assigned) continue;
-              pick = { n, nRef }; break;
-            }
-            if (!pick) throw new Error("号码已抽完");
-
-            tx.update(pRef, { number: pick.n, drawnAt: serverTimestamp() });
-            tx.update(pick.nRef, { assigned: true, assignedTo: pid, assignedAt: serverTimestamp() });
-          });
-          await refresh();
-          alert("抽取成功！");
-        } catch (e) {
-          alert(e.message || String(e));
-        }
-      }
-
-      // 撤销（仅主持人）
-      async function resetOne(pid) {
-        if (!adminParam) { alert("无权限"); return; }
-        if (!confirm("确认撤销该选手的顺序号？")) return;
-        await runTransaction(db, async (tx) => {
-          const pRef = doc(db, "sessions", sid, "participants", pid);
-          const pSnap = await tx.get(pRef);
-          if (!pSnap.exists()) throw new Error("选手不存在");
-          const num = pSnap.data().number;
-          if (num === null) return; // 无需撤销
-
-          const nRef = doc(db, "sessions", sid, "numbers", String(num));
-          const nSnap = await tx.get(nRef);
-          if (!nSnap.exists()) throw new Error("号码池异常");
-
-          tx.update(pRef, { number: null, drawnAt: null });
-          tx.update(nRef, { assigned: false, assignedTo: null, assignedAt: null });
-        });
-        await refresh();
-      }
-
-      // 绑定按钮
-      $("drawBtn").onclick = async () => {
-        const pid = $("nameSelect").value;
-        if (!pid) { alert("请选择你的名字"); return; }
-        await drawFor(pid);
-      };
-
-      // 简单轮询（2s 刷新一次）——演示足够；需要更实时可用 onSnapshot
-      await refresh();
-      setInterval(refresh, 2000);
     }
-
   </script>
 </body>
 </html>
