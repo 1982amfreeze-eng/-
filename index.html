@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>演讲比赛抽签</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <style>
+    :root { --c1:#1d4ed8; --c2:#2563eb; --bg:#f8fafc; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, PingFang SC, Noto Sans SC, Arial, "Helvetica Neue", Helvetica, "Microsoft YaHei", sans-serif; background:#f5f6fa; color:#111827;}
+    .container { max-width: 1040px; margin: 24px auto; padding: 0 16px;}
+    .card { background:#fff; border-radius: 16px; box-shadow: 0 10px 30px rgba(2,6,23,.06); padding:24px;}
+    .title { font-weight: 800; font-size: 22px; margin: 0 0 12px 0;}
+    .muted { color:#6b7280; font-size: 14px;}
+    .row { display:flex; gap:16px; align-items:center; }
+    .btn { background: var(--c1); color:#fff; border:none; padding:10px 16px; border-radius:12px; cursor:pointer; font-weight:600;}
+    .btn:hover { background: var(--c2); }
+    .btn-gray { background:#f3f4f6; color:#111827; }
+    .btn-gray:hover { background:#e5e7eb; }
+    .input, .select, textarea { width:100%; border:1px solid #e5e7eb; border-radius:12px; padding:12px; font-size:14px; }
+    .pill { display:inline-flex; align-items:center; gap:8px; background:#f3f4f6; padding:6px 10px; border-radius:999px; }
+    .grid { display:grid; gap:12px; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .list { max-height: 320px; overflow:auto; border:1px dashed #e5e7eb; border-radius:12px; padding:12px;}
+    .badge { display:inline-flex; align-items:center; justify-content:center; width:40px; height:40px; border-radius:999px; background:var(--c1); color:#fff; font-weight:800;}
+    table { width:100%; border-collapse: collapse; }
+    th, td { padding:10px 8px; border-bottom:1px solid #f1f5f9; text-align:left; font-size:14px;}
+    .progress { width:100%; height:10px; background:#f1f5f9; border-radius:999px; overflow:hidden;}
+    .progress>div { height:100%; background:#10b981; }
+    .hidden { display:none; }
+    @media (max-width: 860px) { .grid-2{ grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="grid grid-2">
+      <!-- 主持人/创建卡片（无 s 参数时显示） -->
+      <div id="setup-card" class="card">
+        <h1 class="title">演讲比赛抽签（主持人）</h1>
+        <p class="muted">粘贴 25 人名单（每行一个名字），点击「创建会话」，再把链接发给所有选手。</p>
+        <div style="height:8px"></div>
+        <label>活动标题（可选）</label>
+        <input id="title" class="input" placeholder="演讲比赛抽签" />
+        <div style="height:12px"></div>
+        <label>参赛名单（每行一个）</label>
+        <textarea id="names" rows="10" class="input" placeholder="张三
+李四
+王五
+..."></textarea>
+        <div style="height:12px"></div>
+        <div class="row">
+          <button id="createBtn" class="btn">创建会话</button>
+          <button id="clearBtn" class="btn btn-gray">清空</button>
+        </div>
+        <div style="height:16px"></div>
+        <div id="setup-links" class="hidden">
+          <div class="row">
+            <span class="pill">选手链接</span>
+            <input id="shareLink" class="input" readonly />
+            <button id="copyShare" class="btn btn-gray">复制</button>
+          </div>
+          <div style="height:8px"></div>
+          <div class="row">
+            <span class="pill">主持人管理</span>
+            <input id="adminLink" class="input" readonly />
+            <button id="copyAdmin" class="btn btn-gray">复制</button>
+          </div>
+        </div>
+        <div style="height:16px"></div>
+        <div class="muted">提示：名单中的姓名请保持唯一（如有重名可加“（学院/班级）”）。</div>
+      </div>
+
+      <!-- 抽签/结果卡片（有 s 参数时显示） -->
+      <div id="draw-card" class="card hidden">
+        <div class="row" style="justify-content:space-between">
+          <div>
+            <h2 class="title" id="evtTitle">演讲比赛抽签</h2>
+            <div class="muted">会话 ID：<code id="sid"></code></div>
+          </div>
+          <div class="pill"><span id="remain">剩余 25</span></div>
+        </div>
+
+        <div style="height:12px"></div>
+        <div class="progress"><div id="bar" style="width:0%"></div></div>
+
+        <div style="height:16px"></div>
+        <div class="row">
+          <select id="nameSelect" class="select"></select>
+          <button id="drawBtn" class="btn">抽取顺序</button>
+        </div>
+
+        <div style="height:16px"></div>
+        <div class="grid grid-2">
+          <div>
+            <h3 class="title" style="font-size:18px">待抽签</h3>
+            <div id="waiting" class="list"></div>
+          </div>
+          <div>
+            <h3 class="title" style="font-size:18px">抽签结果</h3>
+            <table id="result">
+              <thead><tr><th>顺序</th><th>姓名</th><th>时间</th><th id="thAdmin" class="hidden">操作</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="adminHint" class="muted hidden" style="margin-top:12px">已进入主持人管理模式，可对个别结果进行撤销。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase（按需更新到当下最新 10.x 版本） -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, doc, setDoc, getDoc, updateDoc, runTransaction, serverTimestamp, collection } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    // 1) 替换为你的 Firebase Web 配置（控制台 -> 项目概览 -> 添加应用 -> Web）
+    const firebaseConfig = {
+      <script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-analytics.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+
+  // Your web app's Firebase configuration
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+  const firebaseConfig = {
+    apiKey: "AIzaSyDOkX7bLHSQZGMbrwK3AROiOHD1MxpX4Gg",
+    authDomain: "online-sequencing-tool.firebaseapp.com",
+    projectId: "online-sequencing-tool",
+    storageBucket: "online-sequencing-tool.firebasestorage.app",
+    messagingSenderId: "65091434205",
+    appId: "1:65091434205:web:7ddd00d8149fa391660d34",
+    measurementId: "G-2BDCDWK7SZ"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+</script>
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // 工具函数
+    const $ = (id) => document.getElementById(id);
+    const qs = new URLSearchParams(location.search);
+    const sid = qs.get("s");
+    const adminParam = qs.get("admin") || null;
+
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+    const randId = (len=6) => {
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      return Array.from({length:len},()=>chars[Math.floor(Math.random()*chars.length)]).join("");
+    };
+    const safePid = (name) => {
+      // 将姓名转为 UTF-8 base64，作为文档 ID（去掉不安全字符）
+      const b64 = btoa(unescape(encodeURIComponent(name)));
+      return b64.replace(/=+$/,"").replace(/[+/]/g, m => m === '+' ? '-' : '_');
+    };
+
+    // UI 切换
+    const setupCard = $("setup-card");
+    const drawCard = $("draw-card");
+    if (sid) { setupCard.classList.add("hidden"); drawCard.classList.remove("hidden"); }
+    else { setupCard.classList.remove("hidden"); drawCard.classList.add("hidden"); }
+
+    // 主持人：创建会话
+    $("clearBtn").onclick = () => { $("names").value = ""; };
+    $("createBtn").onclick = async () => {
+      const title = $("title").value.trim() || "演讲比赛抽签";
+      const names = $("names").value.split(/\\r?\\n/).map(s => s.trim()).filter(Boolean);
+      if (names.length === 0) { alert("请先粘贴 25 人名单（每行一个）"); return; }
+      const sessionId = randId(6);
+      const adminKey = randId(10);
+
+      // 写入会话基础信息
+      const sessionRef = doc(db, "sessions", sessionId);
+      await setDoc(sessionRef, {
+        title, size: names.length, createdAt: serverTimestamp(), adminKey
+      });
+
+      // 写入参赛者与号码池
+      for (const n of names) {
+        await setDoc(doc(db, "sessions", sessionId, "participants", safePid(n)), {
+          name: n, number: null, drawnAt: null
+        });
+      }
+      for (let i=1; i<=names.length; i++) {
+        await setDoc(doc(db, "sessions", sessionId, "numbers", String(i)), {
+          assigned: false, assignedTo: null, assignedAt: null
+        });
+      }
+
+      const share = `${location.origin}${location.pathname}?s=${sessionId}`;
+      const admin = `${location.origin}${location.pathname}?s=${sessionId}&admin=${adminKey}`;
+      $("setup-links").classList.remove("hidden");
+      $("shareLink").value = share;
+      $("adminLink").value = admin;
+      $("copyShare").onclick = () => navigator.clipboard.writeText(share);
+      $("copyAdmin").onclick = () => navigator.clipboard.writeText(admin);
+
+      alert("会话已创建成功！复制链接并发送给所有选手。");
+    };
+
+    // 抽签视图（有 s 参数）
+    if (sid) {
+      const sessionRef = doc(db, "sessions", sid);
+      const sessSnap = await getDoc(sessionRef);
+      if (!sessSnap.exists()) {
+        alert("会话不存在或已删除"); location.href = location.pathname; throw new Error("session not found");
+      }
+
+      const session = sessSnap.data();
+      $("evtTitle").textContent = session.title || "演讲比赛抽签";
+      $("sid").textContent = sid;
+
+      // 检查是否主持人模式
+      const isAdmin = !!adminParam && adminParam === (session.adminKey || "");
+      if (isAdmin) {
+        $("adminHint").classList.remove("hidden");
+        $("thAdmin").classList.remove("hidden");
+      }
+
+      // 初始载入 + 定时刷新（简单轮询，避免为演示引入 onSnapshot）
+      async function refresh() {
+        const pCol = collection(db, "sessions", sid, "participants");
+        const pList = await (await getDoc(sessionRef)).exists() ? await (await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js")).getDocs(pCol) : null;
+        const docs = pList ? pList.docs : [];
+        const participants = docs.map(d => ({ id:d.id, ...d.data() }));
+
+        // 待抽签下拉
+        const waiting = participants.filter(p => p.number === null).sort((a,b)=>a.name.localeCompare(b.name));
+        const select = $("nameSelect"); select.innerHTML = "";
+        waiting.forEach(p => {
+          const opt = document.createElement("option");
+          opt.value = p.id; opt.textContent = p.name;
+          select.appendChild(opt);
+        });
+        if (waiting.length === 0) {
+          const opt = document.createElement("option"); opt.textContent = "（已全部抽完）"; select.appendChild(opt);
+        }
+
+        // 左侧“待抽签”列表
+        const waitingDiv = $("waiting"); waitingDiv.innerHTML = "";
+        waiting.forEach(p => {
+          const row = document.createElement("div"); row.className = "row"; row.style.justifyContent="space-between";
+          row.innerHTML = `<div>${p.name}</div><button class="btn btn-gray" data-pid="${p.id}">代抽</button>`;
+          row.querySelector("button").onclick = () => drawFor(p.id);
+          waitingDiv.appendChild(row);
+        });
+
+        // 右侧“结果表”
+        const resultBody = $("result").querySelector("tbody"); resultBody.innerHTML = "";
+        const drawed = participants.filter(p => p.number !== null).sort((a,b)=>a.number-b.number);
+        drawed.forEach(p => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `<td><span class="badge">${p.number}</span></td><td>${p.name}</td><td>${p.drawnAt ? new Date(p.drawnAt.seconds*1000).toLocaleString() : ""}</td><td class="${isAdmin?'':'hidden'}"><button class="btn btn-gray" data-reset="${p.id}">撤销</button></td>`;
+          if (isAdmin) tr.querySelector(\"button\").onclick = () => resetOne(p.id);
+          resultBody.appendChild(tr);
+        });
+
+        // 进度
+        const total = participants.length, done = drawed.length;
+        $("remain").textContent = `剩余 ${total - done}`;
+        $("bar").style.width = `${(done/total)*100}%`;
+      }
+
+      // 抽签（事务，防并发冲突）
+      async function drawFor(pid) {
+        try {
+          await runTransaction(db, async (tx) => {
+            const pRef = doc(db, "sessions", sid, "participants", pid);
+            const pSnap = await tx.get(pRef);
+            if (!pSnap.exists()) throw new Error("选手不存在");
+            if (pSnap.data().number !== null) throw new Error("该选手已抽取过");
+
+            const size = session.size || 25;
+            // 尝试最多 50 次随机号码
+            let pick = null;
+            for (let i=0;i<50;i++) {
+              const n = 1 + Math.floor(Math.random()*size);
+              const nRef = doc(db, "sessions", sid, "numbers", String(n));
+              const nSnap = await tx.get(nRef);
+              if (!nSnap.exists()) throw new Error("号码池异常");
+              if (nSnap.data().assigned) continue;
+              pick = { n, nRef }; break;
+            }
+            if (!pick) throw new Error("号码已抽完");
+
+            tx.update(pRef, { number: pick.n, drawnAt: serverTimestamp() });
+            tx.update(pick.nRef, { assigned: true, assignedTo: pid, assignedAt: serverTimestamp() });
+          });
+          await refresh();
+          alert("抽取成功！");
+        } catch (e) {
+          alert(e.message || String(e));
+        }
+      }
+
+      // 撤销（仅主持人）
+      async function resetOne(pid) {
+        if (!adminParam) { alert("无权限"); return; }
+        if (!confirm("确认撤销该选手的顺序号？")) return;
+        await runTransaction(db, async (tx) => {
+          const pRef = doc(db, "sessions", sid, "participants", pid);
+          const pSnap = await tx.get(pRef);
+          if (!pSnap.exists()) throw new Error("选手不存在");
+          const num = pSnap.data().number;
+          if (num === null) return; // 无需撤销
+
+          const nRef = doc(db, "sessions", sid, "numbers", String(num));
+          const nSnap = await tx.get(nRef);
+          if (!nSnap.exists()) throw new Error("号码池异常");
+
+          tx.update(pRef, { number: null, drawnAt: null });
+          tx.update(nRef, { assigned: false, assignedTo: null, assignedAt: null });
+        });
+        await refresh();
+      }
+
+      // 绑定按钮
+      $("drawBtn").onclick = async () => {
+        const pid = $("nameSelect").value;
+        if (!pid) { alert("请选择你的名字"); return; }
+        await drawFor(pid);
+      };
+
+      // 简单轮询（2s 刷新一次）——演示足够；需要更实时可用 onSnapshot
+      await refresh();
+      setInterval(refresh, 2000);
+    }
+
+  </script>
+</body>
+</html>
